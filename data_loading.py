@@ -26,8 +26,7 @@ def load_and_preprocess_data(input_path):
     df = df[df['year'] < 2021]
     
     # Remove subjects to be excluded
-    subjects_to_exclude = [917, 313, 391, 232, 95, 412, 401, 234, 223, 71, 376, 269, 386, 176, 388, 355, 1352]
-    df = df[~df['subject'].isin(subjects_to_exclude)]
+    df = exclude_subjects(df)
     
     # Delete specified features
     tabular_to_delete = ['demo_dob', 'query__date', 'demo_crovitz', 'demo_race', 'demo_handedness', 'demo_hispanic', 'demo_yrs_ed', 'lr_fasting', 'lr_hepatic_agr', 'lr_hepatic_albumin', 'lr_hepatic_alp', 'lr_hepatic_alt', 'lr_hepatic_ast', 'lr_hepatic_bili_total', 'lr_hepatic_ggt', 'lr_hepatic_globulin', 'lr_hepatic_protein_tot', 'lr_wbc_baso', 'lr_wbc_baso_abs', 'lr_wbc_eos', 'lr_wbc_eos_abs', 'lr_wbc_mono', 'lr_wbc_mono_abs', 'lr_wbc_neut', 'lr_wbc_neut_abs', 'med_hx_allergy_e', 'med_hx_asthma_e', 'med_hx_bp_high_e', 'med_hx_cancer_e', 'med_hx_cancer_rad_e', 'med_hx_eye_lenses_e', 'med_hx_eye_prob_e', 'med_hx_hav_e', 'med_hx_hbv_e', 'med_hx_hcv_e', 'med_hx_hcv_rx_e', 'med_hx_heart_disease_e', 'med_hx_hiv_e', 'med_hx_kidney_disease_e', 'med_hx_ldl_high_e', 'med_hx_leg_prob_e', 'med_hx_liver_prob_e', 'med_hx_loc_lt_30m_e', 'med_hx_migraine_e', 'med_hx_resp_dis_e', 'med_hx_std_e', 'med_hx_sum', 'med_hx_tb_e', 'med_hx_tens_headache_e', 'med_hx_tox_occ_exp_e', 'meds_sum', 'np_ff_animal_tot', 'np_ff_bird_color_tot', 'np_ff_object_tot', 'np_reyo_imm_raw', 'np_reyo_recog_raw', 'np_wmsr_logic_imm_tot']
@@ -60,8 +59,7 @@ def load_and_preprocess_data_for_training(file_path):
     input_data = reorder_columns(input_data, 'lr_hiv', 5)
     
     # Exclude subjects
-    subjects_to_exclude = [917, 313, 391, 232, 95, 412, 401, 234, 223, 71, 376, 269, 386, 176, 388, 355, 1352]
-    input_data = exclude_subjects(input_data, subjects_to_exclude)
+    input_data = exclude_subjects(input_data)
     
     # Remove specific columns
     med_to_remove = [
@@ -83,3 +81,18 @@ def load_and_preprocess_data_for_training(file_path):
     print(f'Number of features used: {len(X_dataframe.columns)}')
     
     return X_dataframe, X, y, y_strat
+
+
+def load_and_preprocess_data_for_f_tests(input_path):
+    input_data = pd.read_csv(input_path, sep=',')
+    input_data = input_data[input_data.demo_diag != 2]
+    
+    input_data = exclude_subjects(input_data)
+    
+    input_data.loc[input_data['demo_diag'].isin([1, 3]), 'lr_aud'] = 1
+    input_data.loc[input_data['demo_diag'].isin([0, 2]), 'lr_aud'] = 0
+    
+    needed_column = input_data.pop('lr_aud')
+    input_data.insert(4, 'lr_aud', needed_column)
+    
+    return input_data

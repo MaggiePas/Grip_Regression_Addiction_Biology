@@ -558,6 +558,16 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
     X_dataframe_ri = X_dataframe.reset_index(drop=True)
     new_shaps_arr_deep = np.vstack(SHAP_values_per_fold_deep)
     
+    # Get the 6 most important features with their original names
+    vals = np.abs(new_shaps_arr_deep).mean(0)
+    feature_names = X_dataframe_ri.columns
+
+    feature_importance = pd.DataFrame(list(zip(feature_names, vals)),
+                                    columns=['col_name','feature_importance_vals'])
+    feature_importance.sort_values(by=['feature_importance_vals'],
+                                ascending=False, inplace=True)
+    top_6_features = feature_importance['col_name'].values[:6]
+    
     X_dataframe_ri = X_dataframe_ri.rename(columns={"sri24_parc116_cblmhemiwht_wm_prime": "Cerebellum", "np_wmsr_dig_back_span_prime": "Digits Backwards Span",
                                "sri24_parc116_precentral_gm_prime": "Precentral Gyrus", "lr_cbc_mchc_prime": "MCHC", 
                                "phys_bp_diastolic_prime": "Diastolic Blood Pressure", "lr_cbc_mpv_prime": "Mean Platelet Volume",
@@ -604,4 +614,4 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
         for metric, value in overall_metrics[set_type].items():
             print(f'{metric.upper()}: {value/num_folds:.2f}')
 
-    return all_predictions, new_shaps_arr_deep, X_dataframe_ri.reindex(new_index)
+    return all_predictions, list(top_6_features)

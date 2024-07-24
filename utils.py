@@ -102,8 +102,9 @@ def reorder_columns(df, column_name, position):
     return df
 
 
-def exclude_subjects(df, subjects_to_exclude):
+def exclude_subjects(df):
     """Exclude specific subjects from the dataframe."""
+    subjects_to_exclude = [917, 313, 391, 232, 95, 412, 401, 234, 223, 71, 376, 269, 386, 176, 388, 355, 1352]
     return df[~df['subject'].isin(subjects_to_exclude)]
 
 
