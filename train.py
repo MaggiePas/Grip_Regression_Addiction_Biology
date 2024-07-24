@@ -449,7 +449,8 @@ def calculate_metrics(y_true, y_pred):
     r2 = r2_score(y_true, y_pred)
     return mae, mse, rmse, r2
 
-def old_training_notebook_v2(X_dataframe, X, y, y_strat):
+
+def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
     scaler = MinMaxScaler()
     num_folds = 5
     gss = StratifiedKFold(n_splits=num_folds, shuffle=True)
@@ -481,7 +482,13 @@ def old_training_notebook_v2(X_dataframe, X, y, y_strat):
         
         input_size = torch.Tensor(X_scaled).size()[1]
         hidden_size, output_size = 32, 1
-        num_epoch, learning_rate = 200, 1e-2
+        learning_rate = 1e-2
+        
+        # Number of epochs defers based on if we are only training the model on everyone or if we are finetuning
+        if finetune_on != 'none':
+            num_epoch = 200
+        elif finetune_on == 'none':
+            num_epoch = 300
         
         model = create_model(input_size, hidden_size, output_size)
         optimizer = create_optimizer(model, learning_rate)
@@ -489,7 +496,7 @@ def old_training_notebook_v2(X_dataframe, X, y, y_strat):
         loss_fct = nn.MSELoss()
         
         train_loss_all, val_loss_all = [], []
-        
+                
         for epoch in range(num_epoch):
             train_loss = train_epoch(model, data_loader_trn, optimizer, loss_fct)
             val_loss = validate(model, data_loader_test, loss_fct)
@@ -502,13 +509,23 @@ def old_training_notebook_v2(X_dataframe, X, y, y_strat):
             
             lr_scheduler.step()
         
-        # Fine-tuning on CTRL
-        X_scaled_finetune = X_scaled[y_train_hiv==0]
-        y_train_finetune = y_train[y_train_hiv==0]
-        data_loader_trn_finetune = create_dataloaders(X_scaled_finetune, y_train_finetune, shuffle=True)
-        optimizer_finetune = create_optimizer(model, learning_rate, weight_decay=5e-1)
-        
-        for epoch in range(40):
+        # Fine-tuning
+        if finetune_on != 'none':
+            finetune_epochs = 40
+            if finetune_on == 'control':
+                X_scaled_finetune = X_scaled[y_train_hiv==0]
+                y_train_finetune = y_train[y_train_hiv==0]
+            elif finetune_on == 'diseased':
+                X_scaled_finetune = X_scaled[y_train_hiv>0]
+                y_train_finetune = y_train[y_train_hiv>0]
+            else:
+                raise ValueError("finetune_on must be 'none', 'control', or 'diseased'")
+            data_loader_trn_finetune = create_dataloaders(X_scaled_finetune, y_train_finetune, shuffle=True)
+            optimizer_finetune = create_optimizer(model, learning_rate, weight_decay=5e-1)
+        else:
+            finetune_epochs = 0
+            
+        for epoch in range(finetune_epochs):
             train_loss = train_epoch(model, data_loader_trn_finetune, optimizer_finetune, loss_fct)
             val_loss = validate(model, data_loader_test, loss_fct)
             
@@ -544,5 +561,4 @@ def old_training_notebook_v2(X_dataframe, X, y, y_strat):
         for metric, value in overall_metrics[set_type].items():
             print(f'{metric.upper()}: {value/num_folds:.2f}')
 
-    print(all_predictions)
     return all_predictions, new_shaps_arr_deep, X_dataframe_ri.reindex(new_index)
