@@ -15,7 +15,7 @@ def main():
     # Load and preprocess data
     X_dataframe, X, y, y_strat = data_loading.load_and_preprocess_data_for_training('/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv')
 
-    all_predictions, new_shaps_arr_deep, XX = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control')
+    all_predictions, new_shaps_arr_deep, XX = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='diseased')
     print(all_predictions)
 
 if __name__ == "__main__":
