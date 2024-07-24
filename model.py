@@ -1,5 +1,8 @@
 
 import torch.nn as nn
+from sklearn.svm import SVR
+from sklearn.linear_model import Ridge
+from sklearn.base import BaseEstimator, RegressorMixin
 
 class MLP(nn.Module):
     '''
@@ -27,3 +30,24 @@ class MLP(nn.Module):
           Forward pass
         '''
         return self.layers(x)
+
+
+class SKLearnWrapper(BaseEstimator, RegressorMixin):
+    def __init__(self, model):
+        self.model = model
+
+    def fit(self, X, y):
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+
+def create_traditional_model(model_type, **kwargs):
+    if model_type == 'svr':
+        return SKLearnWrapper(SVR(**kwargs))
+    elif model_type == 'ridge':
+        return SKLearnWrapper(Ridge(**kwargs))
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")

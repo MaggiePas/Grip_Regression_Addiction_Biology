@@ -8,14 +8,16 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import shap
 from sklearn.model_selection import StratifiedKFold
 from model import MLP
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import warnings
 import torch.utils.data as utils_data
 from plot_config import COLUMN_RENAME_DICT
+from model import create_traditional_model
 
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 def old_training_notebook(X_dataframe, X, y, y_strat):
     
@@ -401,11 +403,6 @@ def create_optimizer(model, learning_rate, weight_decay=1):
 def create_scheduler(optimizer, milestones, gamma):
     return torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=gamma)
 
-def preprocess_data(X, scaler):
-    X_scaled = scaler.fit_transform(X[:, 1:])
-    X_scaled = np.delete(X_scaled, [1, 2, 6], 1)
-    return X_scaled
-
 def create_dataloaders(X_scaled, y, batch_size=64, shuffle=True):
     dataset = utils_data.TensorDataset(torch.Tensor(X_scaled), torch.Tensor(y))
     return utils_data.DataLoader(dataset, batch_size=batch_size, drop_last=False, shuffle=True, num_workers=0)
@@ -472,8 +469,11 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
         
         ix_training.append(train_idx), ix_test.append(test_idx)
         
-        X_scaled = preprocess_data(X_train, scaler)
-        X_scaled_test = preprocess_data(X_test, scaler)
+        X_scaled = scaler.fit_transform(X_train[:, 1:])
+        X_scaled = np.delete(X_scaled, [1, 2, 6], 1)
+        
+        X_scaled_test = scaler.transform(X_test[:, 1:])
+        X_scaled_test = np.delete(X_scaled_test, [1, 2, 6], 1)
         
         data_loader_trn = create_dataloaders(X_scaled, y_train, shuffle=True)
         data_loader_test = create_dataloaders(X_scaled_test, y_test, shuffle=False)
@@ -578,7 +578,113 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
 
     plt.xlabel('Feature Strength', fontsize = 16)
     plt.ylabel('')
-    f.savefig(f"revision_results/shap_barplots/save_me_shap_finetuned_{finetune_on}.png", dpi=500)
+    f.savefig(f"revision_results_mlp/shap_barplots/save_me_shap_finetuned_{finetune_on}.png", dpi=500)
+
+    # Print results
+    for set_type in ['train', 'test']:
+        print(f'OVERALL {set_type.upper()}')
+        for metric, value in overall_metrics[set_type].items():
+            print(f'{metric.upper()}: {value/num_folds:.2f}')
+
+    return all_predictions, list(top_6_features)
+
+
+def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type='mlp', train_on='control', **model_params):
+    scaler = StandardScaler()
+    num_folds = 5
+    gss = StratifiedKFold(n_splits=num_folds, shuffle=True)
+
+    SHAP_values_per_fold = []
+    ix_training, ix_test = [], []
+    overall_metrics = {'train': {'mae': 0, 'mse': 0, 'rmse': 0, 'r2': 0},
+                       'test': {'mae': 0, 'mse': 0, 'rmse': 0, 'r2': 0}}
+
+    all_predictions = pd.DataFrame({'Actual': [], 'Predicted': [], 
+                                    'Sex': [], 'Diagnosis': [], 'Subject': [], 'Age':[]})
+    
+    for i, (train_idx, test_idx) in enumerate(gss.split(X, y_strat)):
+        print(f'Fold {i+1}')
+        X_train, X_test = X[train_idx], X[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        y_train_hiv = y_strat[train_idx]
+        
+        ix_training.append(train_idx), ix_test.append(test_idx)
+        
+        X_scaled = scaler.fit_transform(X_train[:, 1:])
+        X_scaled = np.delete(X_scaled, [1, 2, 6], 1)
+        
+        X_scaled_test = scaler.transform(X_test[:, 1:])
+        X_scaled_test = np.delete(X_scaled_test, [1, 2, 6], 1)
+        
+        subjects = X_test[:,0]
+        age, sex, diagnosis = X_test[:,1], X_test[:,2], X_test[:,3]
+        
+        # Create and train the model
+        model = create_traditional_model(model_type, **model_params)
+        
+        if train_on == 'control':
+            X_train_finetune = X_scaled[y_train_hiv==0]
+            y_train_finetune = y_train[y_train_hiv==0]
+            shap_plot_color = '#4472C4'
+        elif train_on == 'diseased':
+            X_train_finetune = X_scaled[y_train_hiv>0]
+            y_train_finetune = y_train[y_train_hiv>0]
+            shap_plot_color = '#ED7D31'
+        else:  # 'none' or any other value
+            X_train_finetune = X_scaled
+            y_train_finetune = y_train
+            shap_plot_color = '#FFC0CB'
+        
+        model.fit(X_train_finetune, y_train_finetune)
+        
+        # Predictions
+        y_pred = model.predict(X_scaled_test)
+        y_pred_train = model.predict(X_scaled)
+        
+        # SHAP values
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            warnings.futurewarnings = False
+            explainer = shap.KernelExplainer(model.predict, X_scaled[0:30,:])
+            shap_values = explainer.shap_values(X_scaled_test)
+        SHAP_values_per_fold.extend(shap_values)
+        
+        # Store predictions
+        df_preds = pd.DataFrame({'Actual': y_test.squeeze().astype(float), 'Predicted': y_pred.squeeze().astype(float), 
+                                'Sex': sex.squeeze().astype(float), 'Diagnosis': diagnosis.squeeze().astype(float),
+                                'Subject': subjects.squeeze().astype(float), 'Age': age.squeeze().astype(float)})
+        all_predictions = pd.concat([all_predictions, df_preds])
+
+        # Calculate metrics
+        for set_type, y_true, y_pred in [('train', y_train, y_pred_train), ('test', y_test, y_pred)]:
+            mae, mse, rmse, r2 = calculate_metrics(y_true, y_pred)
+            for metric, value in zip(['mae', 'mse', 'rmse', 'r2'], [mae, mse, rmse, r2]):
+                overall_metrics[set_type][metric] += value
+
+    # Aggregate SHAP values and print results
+    new_index = [ix for ix_test_fold in ix_test for ix in ix_test_fold]
+    X_dataframe_ri = X_dataframe.reset_index(drop=True)
+    new_shaps_arr = np.vstack(SHAP_values_per_fold)
+    
+    # Get the 6 most important features with their original names
+    vals = np.abs(new_shaps_arr).mean(0)
+    feature_names = X_dataframe_ri.columns
+
+    feature_importance = pd.DataFrame(list(zip(feature_names, vals)),
+                                    columns=['col_name','feature_importance_vals'])
+    feature_importance.sort_values(by=['feature_importance_vals'],
+                                ascending=False, inplace=True)
+    top_6_features = feature_importance['col_name'].values[:6]
+    
+    X_dataframe_ri = X_dataframe_ri.rename(columns=COLUMN_RENAME_DICT)
+    
+    # SHAP summary plot
+    shap.summary_plot(np.array(new_shaps_arr), X_dataframe_ri.reindex(new_index), max_display=57, 
+                      color_bar_label='', plot_type="bar", show=False, color=shap_plot_color)
+    plt.xlabel('Feature Strength', fontsize = 16)
+    plt.ylabel('')
+    plt.savefig(f"revision_results_{model_type}/shap_barplots/shap_{model_type}_{train_on}.png", dpi=500)
+    plt.close()
 
     # Print results
     for set_type in ['train', 'test']:
