@@ -18,7 +18,7 @@ def main():
     df = data_loading.load_and_preprocess_data(input_path)
     
     # Impute missing values
-    df = impute_missing_values(df)
+    # df = impute_missing_values(df)
     
     # Residualize grip strength
     df = residualize_grip_strength(df)
@@ -36,7 +36,7 @@ def main():
     df = move_column_to_end(df, 'mean_grip_prime')
     
     # Save the processed dataset
-    df.to_csv(f'{output_path}/grip_dataset_processed_apr_18_2023_onlyhead_replicate_for_revision.csv', index=False)
+    df.to_csv(f'{output_path}/grip_dataset_processed_7_25_no_imputation.csv', index=False)
 
 if __name__ == "__main__":
     main()

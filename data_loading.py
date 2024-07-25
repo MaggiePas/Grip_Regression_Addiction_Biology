@@ -41,6 +41,9 @@ def load_and_preprocess_data(input_path):
     # Convert sex to binary
     df = text_to_codes(df, categorical=['demo_sex', 'demo_diag'])
     
+    # Exclude the HIV patients that we don't use in the study
+    df = df[df[("demo_diag")]!=2]
+    
     # Keep only first visit
     df = df.loc[df.groupby('subject').demo_age.idxmin()].reset_index(drop=True)
     

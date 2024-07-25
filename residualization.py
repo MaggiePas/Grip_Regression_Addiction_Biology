@@ -32,7 +32,7 @@ def residualize_grip_strength(df):
 
 def residualize_measurements(df):
     """
-    Residualize non-imaging measurements.
+    Residualize non-imaging measurements, ignoring rows with missing values for each feature.
     
     Args:
     df (pd.DataFrame): Input dataframe.
@@ -41,7 +41,7 @@ def residualize_measurements(df):
     pd.DataFrame: Dataframe with residualized measurements.
     """
     non_imaging_measurements = [
-        col for col in df.columns 
+        col for col in df.columns
         if not col.startswith('sri24') and not col.endswith('wm')
         and not col.endswith('prime') and col not in [
             'subject', 'demo_age', 'demo_ses', 'demo_sex', 'demo_diag',
@@ -56,22 +56,28 @@ def residualize_measurements(df):
     mean_ses = np.mean(df['demo_ses'])
     
     for feature in non_imaging_measurements:
-        endog = df[feature]
-        df["Intercept"] = 1
-        exog = df[["Intercept", "demo_sex", "demo_ses"]]
+        # Create a mask for non-missing values
+        mask = ~df[feature].isna()
+        
+        # Use only non-missing values for the regression
+        endog = df.loc[mask, feature]
+        exog = sm.add_constant(df.loc[mask, ["demo_sex", "demo_ses"]])
+        
+        # Fit the model
         md = sm.GLM(endog, exog, family=sm.families.Gaussian()).fit()
         
+        # Calculate residuals for all rows, leaving NaN where original values were NaN
         feature_name = feature + '_prime'
-        df[feature_name] = df[feature] - (
-            md.params[1] * (df["demo_sex"] - max_sex) +
-            md.params[2] * (df["demo_ses"] - mean_ses)
+        df[feature_name] = np.nan
+        df.loc[mask, feature_name] = df.loc[mask, feature] - (
+            md.params['demo_sex'] * (df.loc[mask, "demo_sex"] - max_sex) +
+            md.params['demo_ses'] * (df.loc[mask, "demo_ses"] - mean_ses)
         )
-    
+
     # Delete the separate grip values for each hand that are not needed for training
-    df = df.drop(['np_grip_xl_calc', 'np_grip_xr_calc','mean_grip','year', 'Intercept'], axis=1)
-
+    df = df.drop(['np_grip_xl_calc', 'np_grip_xr_calc', 'mean_grip', 'year'], axis=1)
     df = df.drop(non_imaging_measurements, axis=1)
-
+    
     return df
 
 def residualize_imaging(df):

@@ -9,6 +9,7 @@ import shap
 from sklearn.model_selection import StratifiedKFold
 from model import MLP
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.impute import KNNImputer
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -450,6 +451,8 @@ def calculate_metrics(y_true, y_pred):
 
 def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
     scaler = MinMaxScaler()
+    imputer = KNNImputer(n_neighbors=5)
+    
     num_folds = 5
     gss = StratifiedKFold(n_splits=num_folds, shuffle=True)
 
@@ -469,10 +472,14 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
         
         ix_training.append(train_idx), ix_test.append(test_idx)
         
-        X_scaled = scaler.fit_transform(X_train[:, 1:])
+        # Impute missing values within the CV loop so we don't have data leakage
+        X_train_imputed = imputer.fit_transform(X_train[:, 1:])
+        X_test_imputed = imputer.transform(X_test[:, 1:])
+        
+        X_scaled = scaler.fit_transform(X_train_imputed)
         X_scaled = np.delete(X_scaled, [1, 2, 6], 1)
         
-        X_scaled_test = scaler.transform(X_test[:, 1:])
+        X_scaled_test = scaler.transform(X_test_imputed)
         X_scaled_test = np.delete(X_scaled_test, [1, 2, 6], 1)
         
         data_loader_trn = create_dataloaders(X_scaled, y_train, shuffle=True)

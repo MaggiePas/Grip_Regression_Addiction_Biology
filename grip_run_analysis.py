@@ -15,7 +15,10 @@ def main():
     # Set random seed for reproducibility
     set_seed(1964)
     
-    data_path = '/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv'
+    # data_path = '/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv'
+    
+    data_path = 'data_files/grip_dataset_processed_7_25_no_imputation.csv'
+
     # Load and preprocess data
     X_dataframe, X, y, y_strat = data_loading.load_and_preprocess_data_for_training(data_path)
 

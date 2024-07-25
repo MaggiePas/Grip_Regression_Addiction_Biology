@@ -27,9 +27,6 @@ def impute_missing_values(df):
         'med_hx_arthritis_e', 'med_hx_back_pain_e', 'med_hx_leg_prob_e',
         'med_hx_eye_prob_e', 'med_hx_eye_lenses_e', 'qx_audit_total', 'qx_bdi_total'
     ]
-    
-    # Exclude the HIV patients that we don't use in the study
-    df = df[df[("demo_diag")]!=2]
 
     for column_name in df.columns:
         if column_name in mode_columns:
@@ -41,7 +38,4 @@ def impute_missing_values(df):
                 lambda x: x.fillna(x.mean())
             )
 
-    # Keep only the first available visit per subject
-    df = df.loc[df.groupby('subject').demo_age.idxmin()].reset_index(drop=True)
-
-    return df
+    return df, mode_columns
