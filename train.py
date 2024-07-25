@@ -590,7 +590,7 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
 
 
 def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type='mlp', train_on='control', **model_params):
-    scaler = StandardScaler()
+    scaler = MinMaxScaler()
     num_folds = 5
     gss = StratifiedKFold(n_splits=num_folds, shuffle=True)
 

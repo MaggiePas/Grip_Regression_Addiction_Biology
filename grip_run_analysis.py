@@ -18,7 +18,7 @@ def main():
     # Load and preprocess data
     X_dataframe, X, y, y_strat = data_loading.load_and_preprocess_data_for_training('/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv')
 
-    model_type = 'svr' # Options are 'mlp', 'svr', 'ridge'
+    model_type = 'rf' # Options are 'mlp', 'svr', 'ridge'
     
     print('-----------------------------Step 1--------------------------------')  
     # Step 1: Finetune model on controls
@@ -27,10 +27,14 @@ def main():
     if model_type == 'mlp':
         # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_controls = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on=finetune_cohort)
-    else:
+    elif model_type == 'svr':
         # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='svr', kernel='poly', degree=3, C=100, epsilon=0.02)
-    
+    elif model_type == 'ridge':
+        all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='ridge', alpha=5.0)
+    elif model_type == 'rf':
+        all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='rf', n_estimators=300)
+
     all_predictions.to_csv(f'revision_results_{model_type}/predictions_{model_type}_{finetune_cohort}.csv')
     # Generate correlation plots and statistics between actual and predicted grip strength
     correlation_plot(all_predictions=all_predictions, cohort=finetune_cohort, save_path=f'revision_results_{model_type}/model_correlation/correlation_plot_{finetune_cohort}.png')
@@ -43,9 +47,13 @@ def main():
     if model_type == 'mlp':
         # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_diseased = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on=finetune_cohort)
-    else:
+    elif model_type == 'svr':
         # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='svr', kernel='poly', degree=3, C=100, epsilon=0.02)
+    elif model_type == 'ridge':
+        all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='ridge', alpha=5.0)
+    elif model_type == 'rf':
+        all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='rf', n_estimators=100, max_depth=None, min_samples_split=2, min_samples_leaf=1)
 
     all_predictions.to_csv(f'revision_results_{model_type}/predictions_{model_type}_{finetune_cohort}.csv')
     # Generate correlation plots and statistics between actual and predicted grip strength

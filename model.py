@@ -2,7 +2,8 @@
 import torch.nn as nn
 from sklearn.svm import SVR
 from sklearn.linear_model import Ridge
-from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.base import BaseEstimator, RegressorMixin 
+from sklearn.ensemble import RandomForestRegressor
 
 class MLP(nn.Module):
     '''
@@ -49,5 +50,7 @@ def create_traditional_model(model_type, **kwargs):
         return SKLearnWrapper(SVR(**kwargs))
     elif model_type == 'ridge':
         return SKLearnWrapper(Ridge(**kwargs))
+    elif model_type == 'rf':
+        return SKLearnWrapper(RandomForestRegressor(**kwargs))
     else:
         raise ValueError(f"Unknown model type: {model_type}")
