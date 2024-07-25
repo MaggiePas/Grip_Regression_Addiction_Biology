@@ -6,7 +6,7 @@ import data_loading
 from data_loading import *
 from train import train_and_evalute, train_and_evaluate_traditional_model
 from utils import set_seed
-from plotting import correlation_plot, plot_feature_correlation
+from plotting import correlation_plot, plot_feature_correlation, plot_feature_boxplot, plot_feature_correlation_hiv
 from f_test import *
 import matplotlib.pyplot as plt
 from plot_config import PLOT_INFO
@@ -15,20 +15,20 @@ def main():
     # Set random seed for reproducibility
     set_seed(1964)
     
+    data_path = '/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv'
     # Load and preprocess data
-    X_dataframe, X, y, y_strat = data_loading.load_and_preprocess_data_for_training('/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv')
+    X_dataframe, X, y, y_strat = data_loading.load_and_preprocess_data_for_training(data_path)
 
-    model_type = 'rf' # Options are 'mlp', 'svr', 'ridge'
+    model_type = 'mlp' # Options are 'mlp', 'svr', 'ridge'
     
     print('-----------------------------Step 1--------------------------------')  
     # Step 1: Finetune model on controls
     finetune_cohort = 'control'  # Options are: none (train on everyone), control, diseased
     
+    # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
     if model_type == 'mlp':
-        # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_controls = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on=finetune_cohort)
     elif model_type == 'svr':
-        # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='svr', kernel='poly', degree=3, C=100, epsilon=0.02)
     elif model_type == 'ridge':
         all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='ridge', alpha=5.0)
@@ -43,12 +43,11 @@ def main():
     # Step 2: Finetune model on diseased
     finetune_cohort = 'diseased' 
     
+    # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
     plt.close()
     if model_type == 'mlp':
-        # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_diseased = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on=finetune_cohort)
     elif model_type == 'svr':
-        # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
         all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='svr', kernel='poly', degree=3, C=100, epsilon=0.02)
     elif model_type == 'ridge':
         all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, train_on=finetune_cohort, model_type='ridge', alpha=5.0)
@@ -96,6 +95,47 @@ def main():
             plot_feature_correlation(f_data, feature, PLOT_INFO[feature], f"revision_results_{model_type}/feature_correlation/{feature}_correlation.png", top_6_features_list_controls, top_6_features_list_diseased)
         else:
             print(f"Warning: Plot information not found for feature {feature}. Please add them in plot_config.py")
+            
+    print('-----------------------------Step 7--------------------------------') 
+    # Step 6: Generate Figure 3 for the paper, boxplots comparing selected features between subjects with and without HIV        
+    # For cerebellum
+    plot_feature_boxplot(
+        input_data=f_data,
+        feature='cerebellum_cc',
+        output_path="revision_results_mlp/figure_3/hiv_grip_cerebellum.png",
+        y_label="Cerebellum (cc)",
+        y_ticks=[6, 7, 8, 9, 10]
+    )
+
+    # For platelet count
+    plot_feature_boxplot(
+        input_data=f_data,
+        feature='lr_cbc_plt_prime',
+        output_path="revision_results_mlp/figure_3/hiv_grip_platelet_count.png",
+        y_label="Platelet Count (thou/ul)",
+        y_ticks=[100, 200, 300, 400]
+    )
     
+    print('-----------------------------Step 8--------------------------------') 
+    # Step 6: Generate Figure for the supplementary, correlation plots between selected features and grip for subjects with and without HIV        
+    print('Generated Supplementary Figures')
+    # For cerebellum
+    plot_feature_correlation_hiv(
+        input_data=f_data,
+        feature='cerebellum_cc',
+        output_path="revision_results_mlp/figure_supplementary/hiv_grip_cerebellum_correlation.png",
+        y_label="Cerebellum (cc)",
+        y_ticks=[6, 7, 8, 9, 10]
+    )
+
+    # For platelet count
+    plot_feature_correlation_hiv(
+        input_data=f_data,
+        feature='lr_cbc_plt_prime',
+        output_path="revision_results_mlp/figure_supplementary/hiv_grip_platelet_count_correlation.png",
+        y_label="Platelet Count (thou/ul)",
+        y_ticks=[100, 200, 300, 400]
+    )
+        
 if __name__ == "__main__":
     main()

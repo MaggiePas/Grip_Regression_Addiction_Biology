@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr
+import warnings
 
 def correlation_plot(all_predictions, cohort, save_path=None):
     """
@@ -137,5 +138,123 @@ def plot_feature_correlation(input_data, feature, feature_info, output_path, con
 
     sns.despine()
     plt.tight_layout()
+    plt.savefig(output_path, dpi=500, bbox_inches='tight')
+    plt.close()
+    
+    import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+
+
+def plot_feature_boxplot(input_data, feature, output_path, y_label, y_ticks):
+    """
+    Plot a boxplot for a given feature, comparing AUD and AUD+HIV groups.
+    
+    Args:
+    input_data: DataFrame containing the data after preprocessing like exclusions
+    feature (str): Name of the feature to plot
+    output_path (str): Path to save the output plot
+    y_label (str): Label for y-axis
+    y_ticks (list): List of y-axis tick values
+    """
+    
+    # Create cerebellum_cc feature if needed
+    if feature == 'cerebellum_cc':
+        input_data['cerebellum_cc'] = input_data["sri24_parc116_cblmhemiwht_wm_prime"] * 0.001
+    
+    # Create plot
+    plt.figure(figsize=(3.5, 4))
+    ax = sns.boxplot(data=input_data[input_data["demo_diag"] > 0], x="lr_hiv", y=feature,
+                     palette=["tab:green", "tab:red"], notch=True)
+    
+    plt.yticks(y_ticks)
+    ax.xaxis.label.set_size(16)
+    ax.yaxis.label.set_size(16)
+    ax.tick_params(axis='both', which='major', labelsize=15)
+    ax.tick_params(axis='both', which='minor', labelsize=15)
+    ax.set(xlabel='Living with HIV', ylabel=y_label)
+    plt.xticks([0.0, 1.0], ['No', 'Yes'])
+    sns.despine()
+    
+    # Perform statistical test
+    aud = input_data[input_data["demo_diag"] == 1]
+    audhiv = input_data[input_data["demo_diag"] == 3]
+    stat, p = stats.ttest_ind(aud[feature], audhiv[feature])
+    print('AUD vs. AUDHIV')
+    print(f't-statistic for {feature}: {stat:.3f}')
+    print(f'p-value for {feature}: {p:.3f}')
+    
+    # Save plot
+    plt.savefig(output_path, dpi=500, bbox_inches='tight')
+    plt.close()
+    
+    
+def plot_feature_correlation_hiv(input_data, feature, output_path, y_label, y_ticks):
+    """
+    Plot correlation between a feature and grip strength, comparing HIV+ and HIV- groups.
+    
+    Args:
+    input_data: DataFrame containing the data after preprocessing like exclusions
+    feature (str): Name of the feature to plot
+    output_path (str): Path to save the output plot
+    y_label (str): Label for y-axis
+    y_ticks (list): List of y-axis tick values
+    """
+    
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        warnings.futurewarnings = False
+        # Create cerebellum_cc feature if needed
+        if feature == 'cerebellum_cc':
+            input_data['cerebellum_cc'] = input_data["sri24_parc116_cblmhemiwht_wm_prime"] * 0.001
+        
+        aud = input_data[input_data["demo_diag"] == 1]
+        audhiv = input_data[input_data["demo_diag"] == 3]
+        
+        plt.figure(figsize=(4, 4))
+        controls = input_data[input_data["demo_diag"] == 0]
+        controls['Diagnosis'] = 0
+        
+        diseased = input_data[input_data["demo_diag"] > 0]
+        diseased['Diagnosis'] = 1
+    
+    ax1 = sns.lmplot(data=diseased, x="mean_grip_prime", y=feature, 
+                     palette=['tab:green', 'tab:red'], hue="lr_hiv", robust=True, height=4, aspect=1)
+    ax1.set(xlim=(0, 42))
+    ax = ax1.axes[0,0]
+    plt.yticks(y_ticks)
+    ax.xaxis.label.set_size(18)
+    ax.yaxis.label.set_size(18)
+    ax.tick_params(axis='both', which='major', labelsize=18)
+    ax.tick_params(axis='both', which='minor', labelsize=18)
+    ax.set_xlabel('Measured Grip Strength (kg)', fontsize=20)
+    ax.set_ylabel(y_label, fontsize=20)
+    sns.despine()
+    
+    # Perform statistical tests
+    
+    stat_aud, p_aud = pearsonr(aud['mean_grip_prime'], aud[feature])
+    
+    stat_audhiv, p_audhiv = pearsonr(audhiv['mean_grip_prime'], audhiv[feature])
+    
+    # Annotate plot with correlation results
+    left_high = (0.03, 0.95)
+    if p_aud < 0.001:
+        ax.annotate(f'r={stat_aud:.3f}, p<0.001', xy=left_high, xycoords='axes fraction', ha='left', va='center', 
+                    fontsize=12, bbox={'boxstyle': 'square', 'fc': 'white', 'ec': 'white', 'alpha': 1.0}, color='tab:green')
+    else:
+        ax.annotate(f'r={stat_aud:.3f}, p={p_aud:.3f}', xy=left_high, xycoords='axes fraction', ha='left', va='center', 
+                    fontsize=12, bbox={'boxstyle': 'square', 'fc': 'white', 'ec': 'white', 'alpha': 1.0}, color='tab:green')
+    
+    left_low = (0.03, 0.88)
+    if p_audhiv < 0.001:
+        ax.annotate(f'r={stat_audhiv:.3f}, p<0.001', xy=left_low, xycoords='axes fraction', ha='left', va='center', 
+                    fontsize=12, bbox={'boxstyle': 'square', 'fc': 'white', 'ec': 'white', 'alpha': 1.0}, color='tab:red')
+    else:
+        ax.annotate(f'r={stat_audhiv:.3f}, p={p_audhiv:.3f}', xy=left_low, xycoords='axes fraction', ha='left', va='center', 
+                    fontsize=12, bbox={'boxstyle': 'square', 'fc': 'white', 'ec': 'white', 'alpha': 1.0}, color='tab:red')
+    
+    # Save plot
     plt.savefig(output_path, dpi=500, bbox_inches='tight')
     plt.close()
