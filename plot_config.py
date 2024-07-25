@@ -2,7 +2,7 @@
 
 PLOT_INFO = {
     'sri24_parc116_cblmhemiwht_wm_prime': {
-        'y_label': 'Cerebellum White Matter (cc)',
+        'y_label': 'Cerebellum (cc)',
         'y_ticks': [6, 7, 8, 9, 10]
     },
     'lr_cbc_plt_prime': {

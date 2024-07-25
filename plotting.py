@@ -97,15 +97,7 @@ def plot_feature_correlation(input_data, feature, feature_info, output_path, con
     controls = input_data[input_data["demo_diag"] == 0]
     diseased = input_data[input_data["demo_diag"] > 0]
     
-    if feature in control_features:        
-        # Plot for diseased group
-        ax1 = sns.regplot(data=diseased, x="mean_grip_prime", y=feature, 
-                    color="tab:orange", scatter_kws={'alpha':0.25}, line_kws={'color': 'tab:orange', 'alpha':0.25})
-        
-        # Plot for control group
-        sns.regplot(data=controls, x="mean_grip_prime", y=feature, 
-                        color="tab:blue", line_kws={'color': 'tab:blue'}, ax=ax1)
-    elif feature in diseased_features:        
+    if feature in diseased_features:        
         # Plot for control group
         ax1 = sns.regplot(data=controls, x="mean_grip_prime", y=feature, 
                     color="tab:blue", scatter_kws={'alpha':0.25}, line_kws={'color': 'tab:blue', 'alpha':0.25})
@@ -113,6 +105,14 @@ def plot_feature_correlation(input_data, feature, feature_info, output_path, con
         # Plot for diseased group
         sns.regplot(data=diseased, x="mean_grip_prime", y=feature, 
                         color="tab:orange", line_kws={'color': 'tab:orange'}, ax=ax1)
+    elif feature in control_features:        
+        # Plot for diseased group
+        ax1 = sns.regplot(data=diseased, x="mean_grip_prime", y=feature, 
+                    color="tab:orange", scatter_kws={'alpha':0.25}, line_kws={'color': 'tab:orange', 'alpha':0.25})
+        
+        # Plot for control group
+        sns.regplot(data=controls, x="mean_grip_prime", y=feature, 
+                        color="tab:blue", line_kws={'color': 'tab:blue'}, ax=ax1)
 
     # Set plot limits and labels
     ax1.set(xlim=(0, 42))
