@@ -494,9 +494,9 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
         
         # Number of epochs defers based on if we are only training the model on everyone or if we are finetuning
         if finetune_on != 'none':
-            num_epoch = 200
+            num_epoch = 80 #200
         elif finetune_on == 'none':
-            num_epoch = 300
+            num_epoch = 200 #200 #300
         
         model = create_model(input_size, hidden_size, output_size)
         optimizer = create_optimizer(model, learning_rate)
@@ -519,12 +519,13 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
         
         # Fine-tuning
         if finetune_on != 'none':
-            finetune_epochs = 40
             if finetune_on == 'control':
+                finetune_epochs = 135 #40
                 X_scaled_finetune = X_scaled[y_train_hiv==0]
                 y_train_finetune = y_train[y_train_hiv==0]
                 shap_plot_color = '#4472C4'
             elif finetune_on == 'diseased':
+                finetune_epochs = 135 #100 #40
                 X_scaled_finetune = X_scaled[y_train_hiv>0]
                 y_train_finetune = y_train[y_train_hiv>0]
                 shap_plot_color = '#ED7D31'
@@ -541,7 +542,7 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
             val_loss = validate(model, data_loader_test, loss_fct)
             
             if epoch % 100 == 0:
-                print(f'Fine-tuning Epoch [{epoch+1}/40], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}')
+                print(f'Fine-tuning Epoch [{epoch+1}/{finetune_epochs}], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}')
         
         model.eval()
         y_pred = model(torch.Tensor(X_scaled_test)).detach().numpy()

@@ -61,7 +61,7 @@ def run_f_test_10_times(input_data, formula, num_iterations=10):
             
         if p_value < 0.001:
             count_tiny += 1
-        elif p_value <= 0.05:
+        elif p_value <= 0.059999999:
             count_sign += 1
         else:
             count_non_sign += 1

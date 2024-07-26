@@ -24,7 +24,11 @@ PLOT_INFO = {
     'sri24_parc6_occipital_gm_prime': {
         'y_label': 'Occipital Gray Matter (cc)',
         'y_ticks': [20, 25, 30, 35, 40]
-    }
+    },
+    'sri24_parc116_vermis_2_gm_prime': {
+        'y_label': 'Vermis 2 Gray Matter (cc)',
+        'y_ticks': [1, 1.5, 2, 2.5]
+    },
     # Add more features as needed
 }
 

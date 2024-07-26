@@ -24,10 +24,21 @@ def main():
 
     model_type = 'mlp' # Options are 'mlp', 'svr', 'ridge'
     
+    print('-----------------------------Step 0--------------------------------')  
+    # Step 0: Train on everyone
+    finetune_cohort = 'none'  # Options are: none (train on everyone), control, diseased
+    
+    # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
+    if model_type == 'mlp':
+        all_predictions, top_6_features_list_none = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on=finetune_cohort)
+    
+    # Generate correlation plots and statistics between actual and predicted grip strength
+    correlation_plot(all_predictions=all_predictions, cohort=finetune_cohort, save_path=f'revision_results_{model_type}/model_correlation/correlation_plot_{finetune_cohort}.png')
+    set_seed(1964)
     print('-----------------------------Step 1--------------------------------')  
     # Step 1: Finetune model on controls
     finetune_cohort = 'control'  # Options are: none (train on everyone), control, diseased
-    
+    plt.close()
     # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
     if model_type == 'mlp':
         all_predictions, top_6_features_list_controls = train_and_evalute(X_dataframe, X, y, y_strat, finetune_on=finetune_cohort)
@@ -41,7 +52,7 @@ def main():
     all_predictions.to_csv(f'revision_results_{model_type}/predictions_{model_type}_{finetune_cohort}.csv')
     # Generate correlation plots and statistics between actual and predicted grip strength
     correlation_plot(all_predictions=all_predictions, cohort=finetune_cohort, save_path=f'revision_results_{model_type}/model_correlation/correlation_plot_{finetune_cohort}.png')
-    
+    set_seed(1964)
     print('-----------------------------Step 2--------------------------------')  
     # Step 2: Finetune model on diseased
     finetune_cohort = 'diseased' 
