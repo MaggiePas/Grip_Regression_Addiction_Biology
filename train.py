@@ -599,6 +599,7 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
 
 def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type='mlp', train_on='control', **model_params):
     scaler = MinMaxScaler()
+    imputer = KNNImputer(n_neighbors=5)
     num_folds = 5
     gss = StratifiedKFold(n_splits=num_folds, shuffle=True)
 
@@ -618,10 +619,14 @@ def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type=
         
         ix_training.append(train_idx), ix_test.append(test_idx)
         
-        X_scaled = scaler.fit_transform(X_train[:, 1:])
+        # Impute missing values within the CV loop so we don't have data leakage
+        X_train_imputed = imputer.fit_transform(X_train[:, 1:])
+        X_test_imputed = imputer.transform(X_test[:, 1:])
+        
+        X_scaled = scaler.fit_transform(X_train_imputed)
         X_scaled = np.delete(X_scaled, [1, 2, 6], 1)
         
-        X_scaled_test = scaler.transform(X_test[:, 1:])
+        X_scaled_test = scaler.transform(X_test_imputed)
         X_scaled_test = np.delete(X_scaled_test, [1, 2, 6], 1)
         
         subjects = X_test[:,0]
