@@ -39,11 +39,11 @@ def compare_models(model_a_path, model_b_path):
 # Compare MLP with other models
 base_path = 'revision_results'
 
-for cohort in ['control', 'diseased']:
+for cohort in ['none', 'control', 'diseased']:
     mlp_path = f'{base_path}_mlp/predictions_mlp_{cohort}.csv'
     
     print(f"\nComparing models for cohort: {cohort}")
-    for model in ['svr', 'ridge', 'rf']:
+    for model in ['svr', 'ridge', 'rf_test']:
         model_path = f'{base_path}_{model}/predictions_{model}_{cohort}.csv'
         
         print(f"\nComparing MLP with {model.upper()}:")

@@ -4,6 +4,7 @@ import pandas as pd
 import random
 import numpy as np
 import torch
+import os
 
 def text_to_codes(df, categorical):
     """
@@ -168,3 +169,15 @@ def compare_csv_files(file1_path, file2_path):
         print(f"Columns only in file2: {only_in_file2}")
 
     return different_rows, average_values
+
+
+def check_create_paths(model_type):
+    # Create all directories in the path if they don't exist
+    full_path = f'revision_results_{model_type}/'
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    full_path = f'revision_results_{model_type}/feature_correlation/'
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    full_path = f'revision_results_{model_type}/model_correlation/'
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    full_path = f'revision_results_{model_type}/shap_barplots/'
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)

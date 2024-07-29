@@ -23,3 +23,6 @@ The script grip_dataset_preprocessing.py performs the residualization and other 
 
 ## Environment
 Create conda environment with Python 3.9.2 and install the packages found in requirements.txt
+
+## Model Comparisons
+To perform t-tests that compare whether the MLP proposed model achieves lower regression errors than the baselines run the compare_models.py. Files ending with "_none" mean the models were trained on everyone, ending with "_control" were trained on controls and "_diseased" were trained on diseased.
