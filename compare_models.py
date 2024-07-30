@@ -43,7 +43,7 @@ for cohort in ['none', 'control', 'diseased']:
     mlp_path = f'{base_path}_mlp/predictions_mlp_{cohort}.csv'
     
     print(f"\nComparing models for cohort: {cohort}")
-    for model in ['svr', 'ridge', 'rf_test']:
+    for model in ['svr', 'ridge', 'rf']:
         model_path = f'{base_path}_{model}/predictions_{model}_{cohort}.csv'
         
         print(f"\nComparing MLP with {model.upper()}:")

@@ -181,3 +181,8 @@ def check_create_paths(model_type):
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
     full_path = f'revision_results_{model_type}/shap_barplots/'
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    if model_type == 'mlp' or model_type == 'original':
+        full_path = f'revision_results_{model_type}/figure_3/'
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        full_path = f'revision_results_{model_type}/figure_supplementary/'
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)

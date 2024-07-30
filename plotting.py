@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr
 import warnings
+from scipy import stats
+import numpy as np
 
 def correlation_plot(all_predictions, cohort, save_path=None):
     """
@@ -140,11 +142,6 @@ def plot_feature_correlation(input_data, feature, feature_info, output_path, con
     plt.tight_layout()
     plt.savefig(output_path, dpi=500, bbox_inches='tight')
     plt.close()
-    
-    import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy import stats
 
 
 def plot_feature_boxplot(input_data, feature, output_path, y_label, y_ticks):
@@ -161,7 +158,10 @@ def plot_feature_boxplot(input_data, feature, output_path, y_label, y_ticks):
     
     # Create cerebellum_cc feature if needed
     if feature == 'cerebellum_cc':
-        input_data['cerebellum_cc'] = input_data["sri24_parc116_cblmhemiwht_wm_prime"] * 0.001
+        if np.max(input_data["sri24_parc116_cblmhemiwht_wm_prime"]) < 15:
+            input_data['cerebellum_cc'] = input_data["sri24_parc116_cblmhemiwht_wm_prime"]
+        else:
+            input_data['cerebellum_cc'] = input_data["sri24_parc116_cblmhemiwht_wm_prime"] * 0.001
     
     # Create plot
     plt.figure(figsize=(3.5, 4))
@@ -206,7 +206,9 @@ def plot_feature_correlation_hiv(input_data, feature, output_path, y_label, y_ti
         warnings.filterwarnings("ignore")
         warnings.futurewarnings = False
         # Create cerebellum_cc feature if needed
-        if feature == 'cerebellum_cc':
+        if np.max(input_data["sri24_parc116_cblmhemiwht_wm_prime"]) < 15:
+            input_data['cerebellum_cc'] = input_data["sri24_parc116_cblmhemiwht_wm_prime"]
+        else:
             input_data['cerebellum_cc'] = input_data["sri24_parc116_cblmhemiwht_wm_prime"] * 0.001
         
         aud = input_data[input_data["demo_diag"] == 1]

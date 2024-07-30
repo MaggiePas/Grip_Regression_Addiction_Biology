@@ -12,6 +12,8 @@ from plot_config import PLOT_INFO
 def main():
     # Set random seed for reproducibility
     set_seed(1964)
+    model_type = 'original'
+    check_create_paths(model_type)
         
     print('-----------------------------Step 1--------------------------------')  
     # Step 1: Finetune model on controls
@@ -44,7 +46,7 @@ def main():
     
     print('-----------------------------Step 4--------------------------------')  
     # Step 4: Perfomr F-tests on the unique features for each group and print the results hoping to get double dissociation
-    f_data = load_and_preprocess_data_for_f_tests('/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv')
+    f_data = load_and_preprocess_data_for_f_tests('data_files/grip_dataset_processed_apr_18_2023_onlyhead.csv')
     
     run_f_test_double_dissociation(f_data, control_formula, diseased_formula)
     
