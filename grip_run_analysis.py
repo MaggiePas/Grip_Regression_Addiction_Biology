@@ -2,12 +2,12 @@
 
 import data_loading
 from data_loading import *
-from train import train_and_evalute, train_and_evaluate_traditional_model
-from utils import set_seed
+from utils import *
 from plotting import correlation_plot, plot_feature_correlation, plot_feature_boxplot, plot_feature_correlation_hiv
 from f_test import *
 import matplotlib.pyplot as plt
 from plot_config import PLOT_INFO
+from train import train_and_evalute, train_and_evaluate_traditional_model
 
 def main():
     # Set random seed for reproducibility
@@ -16,78 +16,26 @@ def main():
     # Load and preprocess data
     data_path = 'data_files/grip_dataset_processed_7_29_no_imputation_no_residualization.csv'
 
-    X_dataframe_no_residualization, y_strat_no_resid = data_loading.load_and_preprocess_data_for_training(data_path, preparing=False)
+    X_dataframe, y_strat = data_loading.load_and_preprocess_data_for_training(data_path, preparing=False)
 
     model_type = 'svr' # Options are 'mlp', 'svr', 'ridge', 'rf'
     
     # Create all directories in the path if they don't exist for this model type
     check_create_paths(model_type)
     
-    print('-----------------------------Step 0--------------------------------')  
-    # Step 0: Train on everyone
-    finetune_cohort = 'none'  # Options are: none (train on everyone), control, diseased
-    
-    # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
-    if model_type == 'mlp':
-        all_predictions, _ = train_and_evalute(X_dataframe_no_residualization, y_strat_no_resid, finetune_on=finetune_cohort)
-    elif model_type == 'svr':
-        all_predictions, _ = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, kernel='poly', degree=3, C=100, epsilon=0.02)
-        # all_predictions, _ = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-    elif model_type == 'ridge':
-        all_predictions, _ = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, alpha=5.0)
-        # all_predictions, _ = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-    elif model_type == 'rf':
-        all_predictions, _ = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, n_estimators=300)
-        # all_predictions, _ = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
+    steps = [
+        ('Step 0: Train on everyone', 'none'),
+        ('Step 1: Finetune model on controls', 'control'),
+        ('Step 2: Finetune model on diseased', 'diseased')
+    ]
 
-
-    all_predictions.to_csv(f'revision_results_{model_type}/predictions_{model_type}_{finetune_cohort}.csv')
-    # Generate correlation plots and statistics between actual and predicted grip strength
-    correlation_plot(all_predictions=all_predictions, cohort=finetune_cohort, save_path=f'revision_results_{model_type}/model_correlation/correlation_plot_{finetune_cohort}.png')
-    set_seed(1964)
-    print('-----------------------------Step 1--------------------------------')  
-    # Step 1: Finetune model on controls
-    finetune_cohort = 'control'  # Options are: none (train on everyone), control, diseased
-    plt.close()
-    # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
-    if model_type == 'mlp':
-        all_predictions, top_6_features_list_controls = train_and_evalute(X_dataframe_no_residualization, y_strat_no_resid, finetune_on=finetune_cohort)
-    elif model_type == 'svr':
-        all_predictions,top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, kernel='poly', degree=3, C=100, epsilon=0.02)
-        # all_predictions,top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-    elif model_type == 'ridge':
-        all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, alpha=5.0)
-        # all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-    elif model_type == 'rf':
-        all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, n_estimators=300)
-        # all_predictions, top_6_features_list_controls = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-
-
-    all_predictions.to_csv(f'revision_results_{model_type}/predictions_{model_type}_{finetune_cohort}.csv')
-    # Generate correlation plots and statistics between actual and predicted grip strength
-    correlation_plot(all_predictions=all_predictions, cohort=finetune_cohort, save_path=f'revision_results_{model_type}/model_correlation/correlation_plot_{finetune_cohort}.png')
-    set_seed(1964)
-    print('-----------------------------Step 2--------------------------------')  
-    # Step 2: Finetune model on diseased
-    finetune_cohort = 'diseased' 
-    
-    # Train and evaluate model. Generate SHAP plots and values for the trained/finetuned model
-    plt.close()
-    if model_type == 'mlp':
-        all_predictions, top_6_features_list_diseased = train_and_evalute(X_dataframe_no_residualization, y_strat_no_resid, finetune_on=finetune_cohort)
-    elif model_type == 'svr':
-        all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, kernel='poly', degree=3, C=100, epsilon=0.02)
-        # all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-    elif model_type == 'ridge':
-        all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, alpha=5.0)
-        # all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-    elif model_type == 'rf':
-        all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type, n_estimators=300)
-        # all_predictions, top_6_features_list_diseased = train_and_evaluate_traditional_model(X_dataframe_no_residualization, y_strat_no_resid, train_on=finetune_cohort, model_type=model_type)
-
-    all_predictions.to_csv(f'revision_results_{model_type}/predictions_{model_type}_{finetune_cohort}.csv')
-    # Generate correlation plots and statistics between actual and predicted grip strength
-    correlation_plot(all_predictions=all_predictions, cohort=finetune_cohort, save_path=f'revision_results_{model_type}/model_correlation/correlation_plot_{finetune_cohort}.png')
+    for step_name, finetune_cohort in steps:
+        print(f'-----------------------------{step_name}--------------------------------')
+        top_features = run_model(model_type, finetune_cohort, X_dataframe, y_strat)
+        if finetune_cohort == 'control':
+            top_6_features_list_controls = top_features
+        elif finetune_cohort == 'diseased':
+            top_6_features_list_diseased = top_features
 
     print('-----------------------------Step 3--------------------------------')  
     # Step 3: Find common and unique features between control and diseased groups based on SHAP values and create formulas for F-tests
@@ -167,6 +115,20 @@ def main():
         y_label="Platelet Count (thou/ul)",
         y_ticks=[100, 200, 300, 400]
     )
-        
+    
+    
+def run_model(model_type, finetune_cohort, X_dataframe, y_strat):
+    if model_type == 'mlp':
+        all_predictions, top_features = train_and_evalute(X_dataframe, y_strat, finetune_on=finetune_cohort)
+    else:
+        all_predictions, top_features = train_and_evaluate_traditional_model(X_dataframe, y_strat, train_on=finetune_cohort, model_type=model_type)
+    
+    all_predictions.to_csv(f'revision_results_{model_type}/predictions_{model_type}_{finetune_cohort}.csv')
+    correlation_plot(all_predictions=all_predictions, cohort=finetune_cohort, 
+                     save_path=f'revision_results_{model_type}/model_correlation/correlation_plot_{finetune_cohort}.png')
+    
+    return top_features
+
+
 if __name__ == "__main__":
     main()

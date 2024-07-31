@@ -18,7 +18,7 @@ import torch.utils.data as utils_data
 from plot_config import COLUMN_RENAME_DICT
 from model import create_traditional_model
 from utils import *
-from data_loading import *
+from data_loading import preprocess_data_no_leakage
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -349,7 +349,7 @@ def train_and_evaluate_traditional_model(X_dataframe, y_strat, model_type='mlp',
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             warnings.futurewarnings = False
-            explainer = shap.KernelExplainer(model.predict, X_scaled[0:50,:])
+            explainer = shap.KernelExplainer(model.predict, X_scaled[0:80,:])
             shap_values = explainer.shap_values(X_scaled_test)
         SHAP_values_per_fold.extend(shap_values)
         

@@ -2,10 +2,10 @@
 
 import pandas as pd
 import numpy as np
-from utils import *
 from sklearn.preprocessing import MinMaxScaler
 from data_imputation import *
 from residualization import *
+from utils import *
 
 def load_and_preprocess_data(input_path):
     """
