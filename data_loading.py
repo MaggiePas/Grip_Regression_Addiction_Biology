@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 from utils import *
 from sklearn.preprocessing import MinMaxScaler
+from data_imputation import *
+from residualization import *
 
 def load_and_preprocess_data(input_path):
     """
@@ -50,7 +52,7 @@ def load_and_preprocess_data(input_path):
     return df
 
 
-def load_and_preprocess_data_for_training(file_path):
+def load_and_preprocess_data_for_training(file_path, preparing=True):
     """Main function to load and preprocess data for training."""
     # Load data
     input_data = pd.read_csv(file_path, sep=',')
@@ -64,26 +66,37 @@ def load_and_preprocess_data_for_training(file_path):
     # Exclude subjects
     input_data = exclude_subjects(input_data)
     
-    # Remove specific columns
-    med_to_remove = [
+    # Exclude subjects with only HIV diagnosis
+    input_data = input_data[input_data.demo_diag != 2]
+    
+    if preparing:
+         # Remove specific columns
+        med_to_remove = [
         "med_hx_arthritis_e", "med_hx_back_pain_e", "med_hx_diabetes_e",
         "med_hx_head_injury_e", "med_hx_neuropathy_e", "med_hx_sleep_disorder_e",
         "med_hx_thy_hyper_e", "med_hx_thy_hypo_e", "lr_hbv", "lr_hcv",
         "sri24_parc116_insula_gm_prime"
-    ]
-    input_data = remove_columns(input_data, med_to_remove)
+        ]
+        input_data = remove_columns(input_data, med_to_remove)
     
-    # Exclude subjects with only HIV diagnosis
-    input_data = input_data[input_data.demo_diag != 2]
+        # Prepare data for training
+        X_dataframe, X, y, y_strat = prepare_data_for_training(input_data)
     
-    # Prepare data for training
-    X_dataframe, X, y, y_strat = prepare_data_for_training(input_data)
+        # Print information
+        print(f'Features used: {X_dataframe.columns}')
+        print(f'Number of features used: {len(X_dataframe.columns)}')
     
-    # Print information
-    print(f'Features used: {X_dataframe.columns}')
-    print(f'Number of features used: {len(X_dataframe.columns)}')
-    
-    return X_dataframe, X, y, y_strat
+        return X_dataframe, X, y, y_strat
+    else:
+        # Remove specific columns
+        med_to_remove = [
+        "med_hx_arthritis_e", "med_hx_back_pain_e", "med_hx_diabetes_e",
+        "med_hx_head_injury_e", "med_hx_neuropathy_e", "med_hx_sleep_disorder_e",
+        "med_hx_thy_hyper_e", "med_hx_thy_hypo_e", "lr_hbv", "lr_hcv"
+        ]
+        input_data = remove_columns(input_data, med_to_remove)
+        y_strat = np.array(input_data['demo_diag'])
+        return input_data, y_strat
 
 
 def load_and_preprocess_data_for_f_tests(input_path):
@@ -99,3 +112,23 @@ def load_and_preprocess_data_for_f_tests(input_path):
     input_data.insert(4, 'lr_aud', needed_column)
     
     return input_data
+
+
+def preprocess_data_no_leakage(train_data, test_data):
+    """Preprocess the training and test data."""
+    train_data, test_data = impute_missing_values_no_leakage(train_data, test_data)
+    train_data, test_data = residualize_data_no_leakage(train_data, test_data)
+    train_data = post_process_data_no_leakage(train_data)
+    test_data = post_process_data_no_leakage(test_data)
+    return train_data, test_data
+
+
+def post_process_data_no_leakage(data):
+    """Perform post-processing steps on the data."""
+    data = sum_hemispheres(data)
+    # We have insula twice, one from parc6 and one from parc116
+    data = remove_columns(data, ['sri24_parc116_insula_gm_prime'])
+    data = move_column_to_end(data, 'mean_grip_prime')
+    data = reorder_columns(data, 'lr_aud', 5)
+    data = reorder_columns(data, 'lr_hiv', 5)
+    return data

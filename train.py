@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import shap
 from sklearn.model_selection import StratifiedKFold
 from model import MLP
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import KNNImputer
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -17,6 +17,8 @@ import warnings
 import torch.utils.data as utils_data
 from plot_config import COLUMN_RENAME_DICT
 from model import create_traditional_model
+from utils import *
+from data_loading import *
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -449,11 +451,12 @@ def calculate_metrics(y_true, y_pred):
     return mae, mse, rmse, r2
 
 
-def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
+def train_and_evalute(X_dataframe, y_strat, finetune_on='control'):
     scaler = MinMaxScaler()
-    imputer = KNNImputer(n_neighbors=5)
+    # imputer = KNNImputer(n_neighbors=5)
     
     num_folds = 5
+    n_samples = len(y_strat)
     gss = StratifiedKFold(n_splits=num_folds, shuffle=True)
 
     SHAP_values_per_fold_deep = []
@@ -463,24 +466,58 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
 
     all_predictions = pd.DataFrame({'Actual': [], 'Predicted': [], 
                                     'Sex': [], 'Diagnosis': [], 'Subject': [], 'Age':[]})
-
-    for i, (train_idx, test_idx) in enumerate(gss.split(X, y_strat)):
+    X_dataframe_fold = X_dataframe.copy()
+    X_dataframe_fold['original_index'] = range(len(X_dataframe_fold))
+    # X_dataframe_fold_original_index = X_dataframe.copy()
+    for i, (train_idx, test_idx) in enumerate(gss.split(np.zeros(n_samples), y_strat)):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            warnings.futurewarnings = False
+            
+            # Split data into train and test
+            X_train_data = X_dataframe_fold.iloc[train_idx]
+            X_test_data = X_dataframe_fold.iloc[test_idx]
+            
+            # Save original indices
+            train_original_index = X_train_data['original_index']
+            test_original_index = X_test_data['original_index']
+            
+            # Remove original_index before preprocessing
+            X_train_data = X_train_data.drop('original_index', axis=1)
+            X_test_data = X_test_data.drop('original_index', axis=1)
+            
+            # Preprocess data with imputation and residualization without data leakage
+            X_train_processed, X_test_processed = preprocess_data_no_leakage(X_train_data, X_test_data)
+            
+            # Prepare data for model
+            X_train = np.array(X_train_processed.iloc[:,:-1])
+            X_test = np.array(X_test_processed.iloc[:,:-1])
+            y_train = np.array(X_train_processed['mean_grip_prime'])
+            y_test = np.array(X_test_processed['mean_grip_prime'])
+            
+            # Restore original indices and combine processed data - this is for SHAP values and correct feature names
+            X_train_processed['original_index'] = train_original_index
+            X_test_processed['original_index'] = test_original_index
+            X_processed_all = pd.concat([X_train_processed, X_test_processed])
+            X_processed_all = X_processed_all.sort_values('original_index').reset_index(drop=True)
+            X_processed_all = X_processed_all.drop('original_index', axis=1)
+            
+            # Update y_strat and X_dataframe
+            y_strat = np.array(X_processed_all['demo_diag'])
+            y_train_hiv = y_strat[train_idx]
+            X_dataframe = X_processed_all.drop(["mean_grip_prime", "demo_diag", "demo_sex", "demo_ses", "subject"], axis=1)
+                
         print(f'Fold {i+1}')
-        X_train, X_test = X[train_idx], X[test_idx]
-        y_train, y_test = y[train_idx], y[test_idx]
-        y_train_hiv = y_strat[train_idx]
         
         ix_training.append(train_idx), ix_test.append(test_idx)
+                
+        X_scaled = scaler.fit_transform(X_train[:, 1:])
+        # Remove the variables for demo_diag, demo_sex and demo_ses that will not be used during training
+        X_scaled = np.delete(X_scaled, [1, 2, 5], 1)
         
-        # Impute missing values within the CV loop so we don't have data leakage
-        X_train_imputed = imputer.fit_transform(X_train[:, 1:])
-        X_test_imputed = imputer.transform(X_test[:, 1:])
-        
-        X_scaled = scaler.fit_transform(X_train_imputed)
-        X_scaled = np.delete(X_scaled, [1, 2, 6], 1)
-        
-        X_scaled_test = scaler.transform(X_test_imputed)
-        X_scaled_test = np.delete(X_scaled_test, [1, 2, 6], 1)
+        X_scaled_test = scaler.transform(X_test[:, 1:])
+        # Remove the variables for demo_diag, demo_sex and demo_ses that will not be used during training
+        X_scaled_test = np.delete(X_scaled_test, [1, 2, 5], 1)
         
         data_loader_trn = create_dataloaders(X_scaled, y_train, shuffle=True)
         data_loader_test = create_dataloaders(X_scaled_test, y_test, shuffle=False)
@@ -494,9 +531,9 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
         
         # Number of epochs defers based on if we are only training the model on everyone or if we are finetuning
         if finetune_on != 'none':
-            num_epoch = 80 #200
+            num_epoch = 70 #100 #80
         elif finetune_on == 'none':
-            num_epoch = 200 #200 #300
+            num_epoch = 70 #80
         
         model = create_model(input_size, hidden_size, output_size)
         optimizer = create_optimizer(model, learning_rate)
@@ -520,12 +557,12 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
         # Fine-tuning
         if finetune_on != 'none':
             if finetune_on == 'control':
-                finetune_epochs = 135 #40
+                finetune_epochs = 213
                 X_scaled_finetune = X_scaled[y_train_hiv==0]
                 y_train_finetune = y_train[y_train_hiv==0]
                 shap_plot_color = '#4472C4'
             elif finetune_on == 'diseased':
-                finetune_epochs = 135 #100 #40
+                finetune_epochs = 90
                 X_scaled_finetune = X_scaled[y_train_hiv>0]
                 y_train_finetune = y_train[y_train_hiv>0]
                 shap_plot_color = '#ED7D31'
@@ -579,7 +616,7 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
     
     X_dataframe_ri = X_dataframe_ri.rename(columns=COLUMN_RENAME_DICT)
     
-    shap.summary_plot(np.array(new_shaps_arr_deep), X_dataframe_ri.reindex(new_index),max_display=57, 
+    shap.summary_plot(np.array(new_shaps_arr_deep), X_dataframe_ri.reindex(new_index),max_display=58, 
                   color_bar_label='', color=shap_plot_color, plot_type="bar", show=False)
 
     f = plt.gcf()
@@ -597,10 +634,10 @@ def train_and_evalute(X_dataframe, X, y, y_strat, finetune_on='control'):
     return all_predictions, list(top_6_features)
 
 
-def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type='mlp', train_on='control', **model_params):
+def train_and_evaluate_traditional_model(X_dataframe, y_strat, model_type='mlp', train_on='control', **model_params):
     scaler = MinMaxScaler()
-    imputer = KNNImputer(n_neighbors=5)
     num_folds = 5
+    n_samples = len(y_strat)
     gss = StratifiedKFold(n_splits=num_folds, shuffle=True)
 
     SHAP_values_per_fold = []
@@ -611,23 +648,54 @@ def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type=
     all_predictions = pd.DataFrame({'Actual': [], 'Predicted': [], 
                                     'Sex': [], 'Diagnosis': [], 'Subject': [], 'Age':[]})
     
-    for i, (train_idx, test_idx) in enumerate(gss.split(X, y_strat)):
-        print(f'Fold {i+1}')
-        X_train, X_test = X[train_idx], X[test_idx]
-        y_train, y_test = y[train_idx], y[test_idx]
-        y_train_hiv = y_strat[train_idx]
+    X_dataframe_fold = X_dataframe.copy()
+    X_dataframe_fold['original_index'] = range(len(X_dataframe_fold))
+    for i, (train_idx, test_idx) in enumerate(gss.split(np.zeros(n_samples), y_strat)):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            warnings.futurewarnings = False
+            
+            # Split data into train and test
+            X_train_data = X_dataframe_fold.iloc[train_idx]
+            X_test_data = X_dataframe_fold.iloc[test_idx]
+            
+            # Save original indices
+            train_original_index = X_train_data['original_index']
+            test_original_index = X_test_data['original_index']
+            
+            # Remove original_index before preprocessing
+            X_train_data = X_train_data.drop('original_index', axis=1)
+            X_test_data = X_test_data.drop('original_index', axis=1)
+            
+            # Preprocess data with imputation and residualization without data leakage
+            X_train_processed, X_test_processed = preprocess_data_no_leakage(X_train_data, X_test_data)
+            
+            # Prepare data for model
+            X_train = np.array(X_train_processed.iloc[:,:-1])
+            X_test = np.array(X_test_processed.iloc[:,:-1])
+            y_train = np.array(X_train_processed['mean_grip_prime'])
+            y_test = np.array(X_test_processed['mean_grip_prime'])
+            
+            # Restore original indices and combine processed data - this is for SHAP values and correct feature names
+            X_train_processed['original_index'] = train_original_index
+            X_test_processed['original_index'] = test_original_index
+            X_processed_all = pd.concat([X_train_processed, X_test_processed])
+            X_processed_all = X_processed_all.sort_values('original_index').reset_index(drop=True)
+            X_processed_all = X_processed_all.drop('original_index', axis=1)
+            
+            # Update y_strat and X_dataframe
+            y_strat = np.array(X_processed_all['demo_diag'])
+            y_train_hiv = y_strat[train_idx]
+            X_dataframe = X_processed_all.drop(["mean_grip_prime", "demo_diag", "demo_sex", "demo_ses", "subject"], axis=1)
         
         ix_training.append(train_idx), ix_test.append(test_idx)
         
-        # Impute missing values within the CV loop so we don't have data leakage
-        X_train_imputed = imputer.fit_transform(X_train[:, 1:])
-        X_test_imputed = imputer.transform(X_test[:, 1:])
+        X_scaled = scaler.fit_transform(X_train[:, 1:])
+        X_scaled = np.delete(X_scaled, [1, 2, 5], 1)
         
-        X_scaled = scaler.fit_transform(X_train_imputed)
-        X_scaled = np.delete(X_scaled, [1, 2, 6], 1)
-        
-        X_scaled_test = scaler.transform(X_test_imputed)
-        X_scaled_test = np.delete(X_scaled_test, [1, 2, 6], 1)
+        X_scaled_test = scaler.transform(X_test[:, 1:])
+        # 1 - sex, 2 - diagnosis, 5 - ses
+        X_scaled_test = np.delete(X_scaled_test, [1, 2, 5], 1)
         
         subjects = X_test[:,0]
         age, sex, diagnosis = X_test[:,1], X_test[:,2], X_test[:,3]
@@ -658,7 +726,7 @@ def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type=
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             warnings.futurewarnings = False
-            explainer = shap.KernelExplainer(model.predict, X_scaled[0:30,:])
+            explainer = shap.KernelExplainer(model.predict, X_scaled[0:50,:])
             shap_values = explainer.shap_values(X_scaled_test)
         SHAP_values_per_fold.extend(shap_values)
         
@@ -692,7 +760,7 @@ def train_and_evaluate_traditional_model(X_dataframe, X, y, y_strat, model_type=
     X_dataframe_ri = X_dataframe_ri.rename(columns=COLUMN_RENAME_DICT)
     
     # SHAP summary plot
-    shap.summary_plot(np.array(new_shaps_arr), X_dataframe_ri.reindex(new_index), max_display=57, 
+    shap.summary_plot(np.array(new_shaps_arr), X_dataframe_ri.reindex(new_index), max_display=58, 
                       color_bar_label='', plot_type="bar", show=False, color=shap_plot_color)
     plt.xlabel('Feature Strength', fontsize = 16)
     plt.ylabel('')
