@@ -9,8 +9,10 @@ control_formula = "mean_grip_prime ~ " + " + ".join(unique_control)
 
 diseased_formula = "mean_grip_prime ~ " + " + ".join(unique_diseased)
 
-f_data = load_and_preprocess_data_for_f_tests('/Users/magdalinipaschali/Documents/stanford/lab_data_code/grip_dataset_processed_apr_18_2023_onlyhead.csv')
+# Check for double dissociation
+f_data = load_and_preprocess_data_for_f_tests('data_files/grip_dataset_processed_apr_18_2023_onlyhead.csv')
 
+# Subsample AUD/AUD+HIV to 53 subjects and repeat 10 times
 run_f_test_double_dissociation(f_data, control_formula, diseased_formula)
 
 count_tiny, count_sign, count_non_sign, max_p_value = run_f_test_10_times(f_data, diseased_formula)
