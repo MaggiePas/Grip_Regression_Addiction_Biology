@@ -349,7 +349,7 @@ def train_and_evaluate_traditional_model(X_dataframe, y_strat, model_type='mlp',
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             warnings.futurewarnings = False
-            explainer = shap.KernelExplainer(model.predict, X_scaled[0:80,:])
+            explainer = shap.KernelExplainer(model.predict, X_scaled[0:30,:])
             shap_values = explainer.shap_values(X_scaled_test)
         SHAP_values_per_fold.extend(shap_values)
         
