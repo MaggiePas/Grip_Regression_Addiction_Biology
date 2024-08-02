@@ -29,3 +29,12 @@ To perform t-tests that compare whether the MLP proposed model achieves lower re
 
 ## Feature Consensus F-tests
 To evaluate whether the features with the highest SHAP values that were identified by the consensus of the MLP, SVR, Ridge and RF models achieve double dissociation between controls vs. AUD/AUD+HIV, run common_shap_features_f_test.py. Currently, if two or more models identify the same feature for controls or diseased, I include it in the F-test. We can adjust how strict we need to be with the consensus among models.
+
+### How were the p-values for the correlations between observed and predicted grip strength for the two samples determine? For parametric p-values, the degrees of freedom are likely over estimated as n-2 due to the use of cross validation. Typically for cross validation, permutation testing, where a null distribution is created from running the prediction algorithm on shuffled labels, is performed. 
+Run compute_p_values_with_permutation_test.py
+
+### The authors should formally test the interaction between prediction performance and group. For example, they show that models have different significance across groups, but they do not show that models perform significantly differently across groups. If the samples are independent, a z test can be used to compare the correlation coefficients.
+Run compare_interaction_across_groups.py
+
+### Were prediction results different between the two AUD groups (i.e., those with and without HIV?)
+Run compare_predictions_AUD_vs_AUDHIV.py
